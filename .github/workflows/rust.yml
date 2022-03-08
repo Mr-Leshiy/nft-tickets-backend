@@ -10,9 +10,18 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        toolchain: [stable]
+        mode: ["", "--release"]
+        include:
+          - os: ubuntu-latest
+            toolchain: nightly
+            experimental: true
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
