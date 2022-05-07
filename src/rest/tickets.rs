@@ -48,11 +48,11 @@ mod tests {
             .tickets_collection
             .contains("new_value"));
 
-            assert!(!context
-                .read()
-                .await
-                .tickets_collection
-                .contains("another_new_value"));
+        assert!(!context
+            .read()
+            .await
+            .tickets_collection
+            .contains("another_new_value"));
     }
 
     #[tokio::test]
