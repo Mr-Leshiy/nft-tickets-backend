@@ -1,14 +1,29 @@
 use crate::context::ContextLock;
-use actix_web::{web, Responder, Scope};
+use actix_web::{web, HttpResponse, Responder, Scope};
+use serde::{Deserialize, Serialize};
 
-async fn create_collection(context: web::Data<ContextLock>) -> impl Responder {
-    let mut context = context.write().await;
-    context.tickets_collection.insert("new_value".to_string());
-    "create_collection"
+#[derive(Clone, Deserialize, Serialize)]
+struct Collection {
+    id: String,
+    name: String,
 }
 
-async fn get_collection() -> impl Responder {
-    "get_collection"
+async fn create_collection(
+    context: web::Data<ContextLock>,
+    collection: web::Json<Collection>,
+) -> impl Responder {
+    let mut context = context.write().await;
+    let collection = collection.into_inner();
+    context
+        .tickets_collection
+        .insert(collection.id, collection.name);
+    HttpResponse::Ok()
+}
+
+async fn get_collection(context: web::Data<ContextLock>, id: web::Path<String>) -> impl Responder {
+    let context = context.read().await;
+    let id = id.into_inner();
+    context.tickets_collection.get(&id).cloned()
 }
 
 pub fn collection(context: ContextLock) -> Scope {
@@ -35,7 +50,13 @@ mod tests {
         let app =
             test::init_service(App::new().configure(|cfg| config_app(context.clone(), cfg))).await;
 
+        let collection = Collection {
+            id: "id".to_string(),
+            name: "name".to_string(),
+        };
+
         let req = test::TestRequest::post()
+            .set_json(collection.clone())
             .uri("/tickets/collection")
             .to_request();
         let resp = test::call_service(&app, req).await;
@@ -46,26 +67,39 @@ mod tests {
             .read()
             .await
             .tickets_collection
-            .contains("new_value"));
+            .contains_key(&collection.id));
 
         assert!(!context
             .read()
             .await
             .tickets_collection
-            .contains("another_new_value"));
+            .contains_key("another_id"));
     }
 
     #[tokio::test]
     async fn get_collection_test() {
-        let context = Default::default();
+        let context: ContextLock = Default::default();
+
+        context
+            .write()
+            .await
+            .tickets_collection
+            .insert("id".to_string(), "value".to_string());
 
         let app = test::init_service(App::new().configure(|cfg| config_app(context, cfg))).await;
+
+        let req = test::TestRequest::get()
+            .uri(format!("/tickets/collection/{}", "id").as_str())
+            .to_request();
+        let resp = test::call_service(&app, req).await;
+
+        assert!(resp.status().is_success());
 
         let req = test::TestRequest::get()
             .uri(format!("/tickets/collection/{}", "id1").as_str())
             .to_request();
         let resp = test::call_service(&app, req).await;
 
-        assert!(resp.status().is_success());
+        assert!(!resp.status().is_success());
     }
 }
