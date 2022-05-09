@@ -1,20 +1,12 @@
-use actix_web::{web, App, HttpRequest, HttpServer};
+use rest::run_rest_server;
+use std::{net::SocketAddr, str::FromStr};
 
-async fn hello_world(req: HttpRequest) -> &'static str {
-    println!("REQ: {:?}", req);
-    "Hello world!"
-}
+mod context;
+mod rest;
 
-pub fn config_app(cfg: &mut web::ServiceConfig) {
-    cfg.service(web::resource("/").route(web::get().to(hello_world)));
-}
-
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> std::io::Result<()> {
-    println!("Starting server");
+    let context = Default::default();
 
-    HttpServer::new(|| App::new().configure(config_app))
-        .bind(("127.0.0.1", 8080))?
-        .run()
-        .await
+    run_rest_server(context, SocketAddr::from_str("127.0.0.1:8000").unwrap()).await
 }
