@@ -1,6 +1,7 @@
 use crate::context::ContextLock;
 use actix_web::{web, HttpResponse, Responder, Scope};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 #[derive(Clone, Deserialize, Serialize)]
 struct Collection {
